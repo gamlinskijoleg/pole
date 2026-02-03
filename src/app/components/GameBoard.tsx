@@ -106,7 +106,9 @@ export default function GameBoard({
               onClick={() => onCellClick(cell)}
               title={owner?.name}
             >
-              {owner?.name.charAt(0).toUpperCase()}
+              <span className={styles.cellText}>
+                {owner?.name}
+              </span>
             </div>
           );
         })}

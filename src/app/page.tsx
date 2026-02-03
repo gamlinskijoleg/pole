@@ -188,7 +188,7 @@ export default function PoleGame() {
     while (emptyCells > 0) {
       for (let pid = 0; pid < newPlayers.length; pid++) {
         const playerCells = newGrid.filter((c) => c.ownerId === pid);
-        let neighbors: number[] = [];
+        const neighbors: number[] = [];
         playerCells.forEach((cell) => {
           [
             { x: 1, y: 0 },
