@@ -1,16 +1,16 @@
 // app/page.tsx
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import styles from './game.module.css';
-import { Player, Cell, GameSettings, Question, MOCK_QUESTIONS } from './types';
+import { useState, useEffect } from "react";
+import styles from "./game.module.css";
+import { Player, Cell, GameSettings, Question, MOCK_QUESTIONS } from "./types";
 
 // Імпортуємо нові компоненти
-import MainMenu from './components/MainMenu';
-import GameBoard from './components/GameBoard';
-import BattleModal from './components/BattleModal';
+import MainMenu from "./components/MainMenu";
+import GameBoard from "./components/GameBoard";
+import BattleModal from "./components/BattleModal";
 
-type GamePhase = 'MENU' | 'MAP_SELECTION' | 'BATTLE' | 'GAME_OVER';
+type GamePhase = "MENU" | "MAP_SELECTION" | "BATTLE" | "GAME_OVER";
 
 interface PlayerConfig {
   name: string;
@@ -18,20 +18,20 @@ interface PlayerConfig {
 }
 
 const getRandomColor = () => {
-  const letters = '0123456789ABCDEF';
-  let color = '#';
+  const letters = "0123456789ABCDEF";
+  let color = "#";
   for (let i = 0; i < 6; i++) {
     color += letters[Math.floor(Math.random() * 16)];
   }
   return color;
 };
 
-const STORAGE_KEY = 'pole_game_save_v1';
+const STORAGE_KEY = "pole_game_save_v1";
 
 export default function PoleGame() {
   // --- STATE ---
   const [isLoaded, setIsLoaded] = useState(false);
-  const [phase, setPhase] = useState<GamePhase>('MENU');
+  const [phase, setPhase] = useState<GamePhase>("MENU");
 
   const [settings, setSettings] = useState<GameSettings>({
     gridSize: 5,
@@ -40,8 +40,8 @@ export default function PoleGame() {
   });
 
   const [playerConfigs, setPlayerConfigs] = useState<PlayerConfig[]>([
-    { name: 'Гравець 1', color: '#FF5733' },
-    { name: 'Гравець 2', color: '#33FF57' },
+    { name: "Гравець 1", color: "#FF5733" },
+    { name: "Гравець 2", color: "#33FF57" },
   ]);
 
   const [players, setPlayers] = useState<Player[]>([]);
@@ -72,16 +72,35 @@ export default function PoleGame() {
         setGrid(parsed.grid);
         setCurrentPlayerId(parsed.currentPlayerId);
         setBattleData(parsed.battleData);
-      } catch (e) { console.error(e); }
+      } catch (e) {
+        console.error(e);
+      }
     }
     setIsLoaded(true);
   }, []);
 
   useEffect(() => {
     if (!isLoaded) return;
-    const stateToSave = { phase, settings, playerConfigs, players, grid, currentPlayerId, battleData };
+    const stateToSave = {
+      phase,
+      settings,
+      playerConfigs,
+      players,
+      grid,
+      currentPlayerId,
+      battleData,
+    };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
-  }, [phase, settings, playerConfigs, players, grid, currentPlayerId, battleData, isLoaded]);
+  }, [
+    phase,
+    settings,
+    playerConfigs,
+    players,
+    grid,
+    currentPlayerId,
+    battleData,
+    isLoaded,
+  ]);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -90,7 +109,10 @@ export default function PoleGame() {
       const newConfigs = [...prev];
       if (settings.playerCount > prev.length) {
         for (let i = prev.length; i < settings.playerCount; i++) {
-          newConfigs.push({ name: `Гравець ${i + 1}`, color: getRandomColor() });
+          newConfigs.push({
+            name: `Гравець ${i + 1}`,
+            color: getRandomColor(),
+          });
         }
       } else if (settings.playerCount < prev.length) {
         return newConfigs.slice(0, settings.playerCount);
@@ -99,7 +121,11 @@ export default function PoleGame() {
     });
   }, [settings.playerCount, isLoaded]);
 
-  const updatePlayerConfig = (index: number, field: keyof PlayerConfig, value: string) => {
+  const updatePlayerConfig = (
+    index: number,
+    field: keyof PlayerConfig,
+    value: string,
+  ) => {
     const newConfigs = [...playerConfigs];
     newConfigs[index] = { ...newConfigs[index], [field]: value };
     setPlayerConfigs(newConfigs);
@@ -114,8 +140,11 @@ export default function PoleGame() {
 
   // --- GAME LOGIC HELPER ---
   const isNeighborToPlayer = (targetCell: Cell, playerId: number) => {
-    const playerCells = grid.filter(c => c.ownerId === playerId);
-    return playerCells.some(pc => Math.abs(pc.x - targetCell.x) + Math.abs(pc.y - targetCell.y) === 1);
+    const playerCells = grid.filter((c) => c.ownerId === playerId);
+    return playerCells.some(
+      (pc) =>
+        Math.abs(pc.x - targetCell.x) + Math.abs(pc.y - targetCell.y) === 1,
+    );
   };
 
   // --- START GAME LOGIC ---
@@ -135,7 +164,11 @@ export default function PoleGame() {
     }
 
     const newPlayers: Player[] = playerConfigs.map((cfg, i) => ({
-      id: i, name: cfg.name, color: cfg.color, isAlive: true, cellsCount: 0,
+      id: i,
+      name: cfg.name,
+      color: cfg.color,
+      isAlive: true,
+      cellsCount: 0,
     }));
 
     let placedSeeds = 0;
@@ -151,55 +184,78 @@ export default function PoleGame() {
       iterations++;
     }
 
-    let emptyCells = newGrid.filter(c => c.ownerId === null).length;
+    let emptyCells = newGrid.filter((c) => c.ownerId === null).length;
     while (emptyCells > 0) {
       for (let pid = 0; pid < newPlayers.length; pid++) {
-        const playerCells = newGrid.filter(c => c.ownerId === pid);
+        const playerCells = newGrid.filter((c) => c.ownerId === pid);
         let neighbors: number[] = [];
-        playerCells.forEach(cell => {
-          [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }].forEach(offset => {
-            const idx = newGrid.findIndex(c => c.x === cell.x + offset.x && c.y === cell.y + offset.y);
-            if (idx !== -1 && newGrid[idx].ownerId === null) neighbors.push(idx);
+        playerCells.forEach((cell) => {
+          [
+            { x: 1, y: 0 },
+            { x: -1, y: 0 },
+            { x: 0, y: 1 },
+            { x: 0, y: -1 },
+          ].forEach((offset) => {
+            const idx = newGrid.findIndex(
+              (c) => c.x === cell.x + offset.x && c.y === cell.y + offset.y,
+            );
+            if (idx !== -1 && newGrid[idx].ownerId === null)
+              neighbors.push(idx);
           });
         });
         if (neighbors.length > 0) {
-          newGrid[neighbors[Math.floor(Math.random() * neighbors.length)]].ownerId = pid;
+          newGrid[
+            neighbors[Math.floor(Math.random() * neighbors.length)]
+          ].ownerId = pid;
           emptyCells--;
           if (emptyCells === 0) break;
         }
       }
-      if (emptyCells > 0 && emptyCells === newGrid.filter(c => c.ownerId === null).length) {
-        const remainingIdx = newGrid.findIndex(c => c.ownerId === null);
-        if (remainingIdx !== -1) { newGrid[remainingIdx].ownerId = 0; emptyCells--; }
+      if (
+        emptyCells > 0 &&
+        emptyCells === newGrid.filter((c) => c.ownerId === null).length
+      ) {
+        const remainingIdx = newGrid.findIndex((c) => c.ownerId === null);
+        if (remainingIdx !== -1) {
+          newGrid[remainingIdx].ownerId = 0;
+          emptyCells--;
+        }
       }
     }
 
-    newPlayers.forEach(p => { p.cellsCount = newGrid.filter(c => c.ownerId === p.id).length; });
+    newPlayers.forEach((p) => {
+      p.cellsCount = newGrid.filter((c) => c.ownerId === p.id).length;
+    });
     setPlayers(newPlayers);
     setGrid(newGrid);
     setCurrentPlayerId(Math.floor(Math.random() * newPlayers.length));
-    setPhase('MAP_SELECTION');
+    setPhase("MAP_SELECTION");
   };
 
   // --- ACTION HANDLERS ---
 
   const handleCellClick = (cell: Cell) => {
-    if (phase !== 'MAP_SELECTION' || currentPlayerId === null) return;
+    if (phase !== "MAP_SELECTION" || currentPlayerId === null) return;
     if (cell.ownerId === currentPlayerId) return;
     if (cell.ownerId !== null && isNeighborToPlayer(cell, currentPlayerId)) {
       startBattle(currentPlayerId, cell.ownerId);
     }
   };
 
-  const getRandomQuestion = () => MOCK_QUESTIONS[Math.floor(Math.random() * MOCK_QUESTIONS.length)];
+  const getRandomQuestion = () =>
+    MOCK_QUESTIONS[Math.floor(Math.random() * MOCK_QUESTIONS.length)];
 
   const startBattle = (attackerId: number, defenderId: number) => {
     setBattleData({
-      attackerId, defenderId,
-      attackerTime: settings.timeLimit, defenderTime: settings.timeLimit,
-      currentTurnId: attackerId, question: getRandomQuestion(), penaltyUntil: null
+      attackerId,
+      defenderId,
+      attackerTime: settings.timeLimit,
+      defenderTime: settings.timeLimit,
+      currentTurnId: attackerId,
+      question: getRandomQuestion(),
+      penaltyUntil: null,
     });
-    setPhase('BATTLE');
+    setPhase("BATTLE");
   };
 
   const handleAnswer = (idx: number) => {
@@ -207,31 +263,49 @@ export default function PoleGame() {
     if (battleData.penaltyUntil && Date.now() < battleData.penaltyUntil) return;
 
     if (idx === battleData.question.correctIndex) {
-      const nextPlayer = battleData.currentTurnId === battleData.attackerId
-        ? battleData.defenderId : battleData.attackerId;
-      setBattleData(prev => ({ ...prev!, currentTurnId: nextPlayer, question: getRandomQuestion() }));
+      const nextPlayer =
+        battleData.currentTurnId === battleData.attackerId
+          ? battleData.defenderId
+          : battleData.attackerId;
+      setBattleData((prev) => ({
+        ...prev!,
+        currentTurnId: nextPlayer,
+        question: getRandomQuestion(),
+      }));
     } else {
-      setBattleData(prev => ({ ...prev!, penaltyUntil: Date.now() + 3000, question: getRandomQuestion() }));
+      setBattleData((prev) => ({
+        ...prev!,
+        penaltyUntil: Date.now() + 3000,
+        question: getRandomQuestion(),
+      }));
     }
   };
 
   const endBattle = (winnerId: number, loserId: number) => {
-    setPhase(currentPhase => {
-      if (currentPhase !== 'BATTLE') return currentPhase;
-      const newGrid = grid.map(cell => ({
-        ...cell, ownerId: cell.ownerId === loserId ? winnerId : cell.ownerId
+    setPhase((currentPhase) => {
+      if (currentPhase !== "BATTLE") return currentPhase;
+      const newGrid = grid.map((cell) => ({
+        ...cell,
+        ownerId: cell.ownerId === loserId ? winnerId : cell.ownerId,
       }));
-      const newPlayers = players.map(p => {
+      const newPlayers = players.map((p) => {
         if (p.id === loserId) return { ...p, isAlive: false, cellsCount: 0 };
-        if (p.id === winnerId) return { ...p, cellsCount: newGrid.filter(c => c.ownerId === winnerId).length };
+        if (p.id === winnerId)
+          return {
+            ...p,
+            cellsCount: newGrid.filter((c) => c.ownerId === winnerId).length,
+          };
         return p;
       });
       setGrid(newGrid);
       setPlayers(newPlayers);
 
-      const alive = newPlayers.filter(p => p.isAlive);
-      if (alive.length === 1) return 'GAME_OVER';
-      else { setCurrentPlayerId(winnerId); return 'MAP_SELECTION'; }
+      const alive = newPlayers.filter((p) => p.isAlive);
+      if (alive.length === 1) return "GAME_OVER";
+      else {
+        setCurrentPlayerId(winnerId);
+        return "MAP_SELECTION";
+      }
     });
     setBattleData(null);
   };
@@ -239,15 +313,21 @@ export default function PoleGame() {
   // Timer Effect
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (phase === 'BATTLE' && battleData) {
+    if (phase === "BATTLE" && battleData) {
       interval = setInterval(() => {
-        setBattleData(prev => {
+        setBattleData((prev) => {
           if (!prev) return null;
           if (prev.currentTurnId === prev.attackerId) {
-            if (prev.attackerTime <= 0) { endBattle(prev.defenderId, prev.attackerId); return prev; }
+            if (prev.attackerTime <= 0) {
+              endBattle(prev.defenderId, prev.attackerId);
+              return prev;
+            }
             return { ...prev, attackerTime: prev.attackerTime - 1 };
           } else {
-            if (prev.defenderTime <= 0) { endBattle(prev.attackerId, prev.defenderId); return prev; }
+            if (prev.defenderTime <= 0) {
+              endBattle(prev.attackerId, prev.defenderId);
+              return prev;
+            }
             return { ...prev, defenderTime: prev.defenderTime - 1 };
           }
         });
@@ -260,7 +340,7 @@ export default function PoleGame() {
 
   return (
     <div className={styles.container}>
-      {phase === 'MENU' && (
+      {phase === "MENU" && (
         <MainMenu
           settings={settings}
           setSettings={setSettings}
@@ -271,7 +351,7 @@ export default function PoleGame() {
         />
       )}
 
-      {(phase === 'MAP_SELECTION' || phase === 'BATTLE') && (
+      {(phase === "MAP_SELECTION" || phase === "BATTLE") && (
         <GameBoard
           grid={grid}
           players={players}
@@ -280,11 +360,11 @@ export default function PoleGame() {
           gridSize={settings.gridSize}
           onCellClick={handleCellClick}
           onReset={resetGame}
-          onToMenu={() => setPhase('MENU')}
+          onToMenu={() => setPhase("MENU")}
         />
       )}
 
-      {phase === 'BATTLE' && battleData && (
+      {phase === "BATTLE" && battleData && (
         <BattleModal
           battleData={battleData}
           players={players}
@@ -292,15 +372,31 @@ export default function PoleGame() {
         />
       )}
 
-      {phase === 'GAME_OVER' && (
+      {phase === "GAME_OVER" && (
         <div className={styles.menu}>
-          <h1 style={{ textAlign: 'center' }}>🏆 Перемога! 🏆</h1>
-          <h2 style={{ color: players.find(p => p.isAlive)?.color, textAlign: 'center', fontSize: '2rem' }}>
-            {players.find(p => p.isAlive)?.name}
+          <h1 style={{ textAlign: "center" }}>🏆 Перемога! 🏆</h1>
+          <h2
+            style={{
+              color: players.find((p) => p.isAlive)?.color,
+              textAlign: "center",
+              fontSize: "2rem",
+            }}
+          >
+            {players.find((p) => p.isAlive)?.name}
           </h2>
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-            <button className={styles.button} onClick={() => setPhase('MENU')}>В меню</button>
-            <button className={styles.button} style={{ background: '#d32f2f' }} onClick={resetGame}>Нова гра</button>
+          <div
+            style={{ display: "flex", gap: "10px", justifyContent: "center" }}
+          >
+            <button className={styles.button} onClick={() => setPhase("MENU")}>
+              В меню
+            </button>
+            <button
+              className={styles.button}
+              style={{ background: "#d32f2f" }}
+              onClick={resetGame}
+            >
+              Нова гра
+            </button>
           </div>
         </div>
       )}
