@@ -1,20 +1,21 @@
 // app/components/TopicSelection.tsx
 import styles from '../game.module.css';
-import { CATEGORY_NAMES, QuestionCategory, Player } from '../types';
+import { QuestionCategory, Player, Question } from '../types';
 
 interface TopicSelectionProps {
     attackerId: number;
     defenderId: number;
     players: Player[];
     onSelect: (category: QuestionCategory) => void;
+    allQuestions: Question[]; // Передаємо всі питання
 }
 
-export default function TopicSelection({ attackerId, defenderId, players, onSelect }: TopicSelectionProps) {
+export default function TopicSelection({ attackerId, defenderId, players, onSelect, allQuestions }: TopicSelectionProps) {
     const attacker = players.find(p => p.id === attackerId);
     const defender = players.find(p => p.id === defenderId);
 
-    // Отримуємо список ключів категорій
-    const categories = Object.keys(CATEGORY_NAMES) as QuestionCategory[];
+    // Отримуємо унікальні категорії з наявних питань
+    const categories = Array.from(new Set(allQuestions.map(q => q.category)));
 
     return (
         <div className={styles.battleOverlay}>
@@ -26,7 +27,7 @@ export default function TopicSelection({ attackerId, defenderId, players, onSele
                     <span style={{ color: defender?.color, fontWeight: 'bold' }}>{defender?.name}</span>
                 </p>
 
-                <div className={styles.answersGrid}>
+                <div className={styles.answersGrid} style={{ maxHeight: '400px', overflowY: 'auto' }}>
                     {categories.map((cat) => (
                         <button
                             key={cat}
@@ -34,7 +35,7 @@ export default function TopicSelection({ attackerId, defenderId, players, onSele
                             onClick={() => onSelect(cat)}
                             style={{ fontWeight: 'bold', fontSize: '1.1rem' }}
                         >
-                            {CATEGORY_NAMES[cat]}
+                            {cat}
                         </button>
                     ))}
                 </div>

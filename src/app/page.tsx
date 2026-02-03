@@ -9,8 +9,9 @@ import MainMenu from "./components/MainMenu";
 import GameBoard from "./components/GameBoard";
 import BattleModal from "./components/BattleModal";
 import TopicSelection from "./components/TopicSelection";
+import QuestionsEditor from "./components/QuestionsEditor";
 
-type GamePhase = 'MENU' | 'MAP_SELECTION' | 'TOPIC_SELECTION' | 'BATTLE' | 'GAME_OVER';
+type GamePhase = 'MENU' | 'EDITOR' | 'MAP_SELECTION' | 'TOPIC_SELECTION' | 'BATTLE' | 'GAME_OVER';
 
 interface PlayerConfig {
   name: string;
@@ -26,7 +27,7 @@ const getRandomColor = () => {
   return color;
 };
 
-const STORAGE_KEY = "pole_game_save_v2"; // Змінив версію ключа, щоб скинути старі глючні збереження
+const STORAGE_KEY = "pole_game_save_v3";
 
 export default function PoleGame() {
   // --- STATE ---
@@ -44,6 +45,8 @@ export default function PoleGame() {
     { name: "Гравець 2", color: "#33FF57" },
   ]);
 
+  const [customQuestions, setCustomQuestions] = useState<Question[]>([]);
+
   const [players, setPlayers] = useState<Player[]>([]);
   const [grid, setGrid] = useState<Cell[]>([]);
   const [currentPlayerId, setCurrentPlayerId] = useState<number | null>(null);
@@ -60,6 +63,8 @@ export default function PoleGame() {
     penaltyUntil: number | null;
     category: QuestionCategory;
   } | null>(null);
+
+  const allQuestions = [...MOCK_QUESTIONS, ...customQuestions];
 
   // --- STORAGE & SYNC LOGIC ---
 
@@ -86,10 +91,11 @@ export default function PoleGame() {
   useEffect(() => {
     if (!isLoaded) return;
     const stateToSave = {
-      phase, settings, playerConfigs, players, grid, currentPlayerId, battleData, pendingBattle
+      phase, settings, playerConfigs, players, grid, currentPlayerId, battleData, pendingBattle,
+      customQuestions // Зберігаємо власні питання
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
-  }, [phase, settings, playerConfigs, players, grid, currentPlayerId, battleData, pendingBattle, isLoaded]);
+  }, [phase, settings, playerConfigs, players, grid, currentPlayerId, battleData, pendingBattle, customQuestions, isLoaded]);
 
   // Синхронізація кількості конфігурацій гравців
   useEffect(() => {
@@ -235,6 +241,14 @@ export default function PoleGame() {
     setPhase("MAP_SELECTION");
   };
 
+  // --- HANDLERS FOR EDITOR ---
+  const handleSaveQuestion = (q: Question) => {
+    setCustomQuestions(prev => [...prev, q]);
+  };
+  const handleDeleteQuestion = (id: number) => {
+    setCustomQuestions(prev => prev.filter(q => q.id !== id));
+  };
+
   // --- ACTION HANDLERS ---
 
   const handleCellClick = (cell: Cell) => {
@@ -250,13 +264,12 @@ export default function PoleGame() {
   };
 
   const getRandomQuestion = (category?: QuestionCategory) => {
+    let source = allQuestions;
     if (category) {
-      const filtered = MOCK_QUESTIONS.filter((q) => q.category === category);
-      if (filtered.length > 0) {
-        return filtered[Math.floor(Math.random() * filtered.length)];
-      }
+      const filtered = source.filter((q) => q.category === category);
+      if (filtered.length > 0) source = filtered;
     }
-    return MOCK_QUESTIONS[Math.floor(Math.random() * MOCK_QUESTIONS.length)];
+    return source[Math.floor(Math.random() * source.length)];
   };
 
   const handleTopicSelect = (category: QuestionCategory) => {
@@ -361,13 +374,32 @@ export default function PoleGame() {
   return (
     <div className={styles.container}>
       {phase === "MENU" && (
-        <MainMenu
-          settings={settings}
-          setSettings={setSettings}
-          playerConfigs={playerConfigs}
-          updatePlayerConfig={updatePlayerConfig}
-          onStart={startGame}
-          onReset={resetGame}
+        <>
+          <MainMenu
+            settings={settings} setSettings={setSettings}
+            playerConfigs={playerConfigs} updatePlayerConfig={updatePlayerConfig}
+            onStart={startGame} onReset={resetGame}
+          />
+          {/* Кнопка редактора питань */}
+          <div style={{ marginTop: '10px' }}>
+            <button
+              className={styles.button}
+              style={{ background: '#6f42c1' }}
+              onClick={() => setPhase('EDITOR')}
+            >
+              📝 Редактор питань та тем
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Фаза редактора */}
+      {phase === "EDITOR" && (
+        <QuestionsEditor
+          customQuestions={customQuestions}
+          onSave={handleSaveQuestion}
+          onDelete={handleDeleteQuestion}
+          onBack={() => setPhase("MENU")}
         />
       )}
 
@@ -390,6 +422,7 @@ export default function PoleGame() {
           defenderId={pendingBattle.defenderId}
           players={players}
           onSelect={handleTopicSelect}
+          allQuestions={allQuestions}
         />
       )}
 
