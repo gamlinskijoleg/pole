@@ -3,14 +3,15 @@
 
 import { useState, useEffect } from "react";
 import styles from "./game.module.css";
-import { Player, Cell, GameSettings, Question, MOCK_QUESTIONS } from "./types";
+import { Player, Cell, GameSettings, Question, MOCK_QUESTIONS, QuestionCategory } from "./types";
 
 // Імпортуємо нові компоненти
 import MainMenu from "./components/MainMenu";
 import GameBoard from "./components/GameBoard";
 import BattleModal from "./components/BattleModal";
+import TopicSelection from "./components/TopicSelection";
 
-type GamePhase = "MENU" | "MAP_SELECTION" | "BATTLE" | "GAME_OVER";
+type GamePhase = 'MENU' | 'MAP_SELECTION' | 'TOPIC_SELECTION' | 'BATTLE' | 'GAME_OVER';
 
 interface PlayerConfig {
   name: string;
@@ -48,6 +49,8 @@ export default function PoleGame() {
   const [grid, setGrid] = useState<Cell[]>([]);
   const [currentPlayerId, setCurrentPlayerId] = useState<number | null>(null);
 
+  const [pendingBattle, setPendingBattle] = useState<{ attackerId: number, defenderId: number } | null>(null);
+
   const [battleData, setBattleData] = useState<{
     attackerId: number;
     defenderId: number;
@@ -56,6 +59,7 @@ export default function PoleGame() {
     currentTurnId: number;
     question: Question | null;
     penaltyUntil: number | null;
+    category: QuestionCategory; // Додали категорію в дані бою
   } | null>(null);
 
   // --- STORAGE & SYNC LOGIC ---
@@ -72,6 +76,7 @@ export default function PoleGame() {
         setGrid(parsed.grid);
         setCurrentPlayerId(parsed.currentPlayerId);
         setBattleData(parsed.battleData);
+        setPendingBattle(parsed.pendingBattle);
       } catch (e) {
         console.error(e);
       }
@@ -82,25 +87,10 @@ export default function PoleGame() {
   useEffect(() => {
     if (!isLoaded) return;
     const stateToSave = {
-      phase,
-      settings,
-      playerConfigs,
-      players,
-      grid,
-      currentPlayerId,
-      battleData,
+      phase, settings, playerConfigs, players, grid, currentPlayerId, battleData, pendingBattle
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
-  }, [
-    phase,
-    settings,
-    playerConfigs,
-    players,
-    grid,
-    currentPlayerId,
-    battleData,
-    isLoaded,
-  ]);
+  }, [phase, settings, playerConfigs, players, grid, currentPlayerId, battleData, pendingBattle, isLoaded]);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -238,23 +228,42 @@ export default function PoleGame() {
     if (phase !== "MAP_SELECTION" || currentPlayerId === null) return;
     if (cell.ownerId === currentPlayerId) return;
     if (cell.ownerId !== null && isNeighborToPlayer(cell, currentPlayerId)) {
-      startBattle(currentPlayerId, cell.ownerId);
+      // ЗМІНА: Не починаємо бій відразу, а запам'ятовуємо ворогів і йдемо вибирати тему
+      setPendingBattle({
+        attackerId: currentPlayerId,
+        defenderId: cell.ownerId,
+      });
+      setPhase("TOPIC_SELECTION");
     }
   };
+  // Тепер функція приймає категорію (необов'язково, для сумісності)
+  const getRandomQuestion = (category?: QuestionCategory) => {
+    if (category) {
+      const filtered = MOCK_QUESTIONS.filter((q) => q.category === category);
+      if (filtered.length > 0) {
+        return filtered[Math.floor(Math.random() * filtered.length)];
+      }
+    }
+    // Якщо категорії немає або питань в ній немає — беремо будь-яке
+    return MOCK_QUESTIONS[Math.floor(Math.random() * MOCK_QUESTIONS.length)];
+  };
 
-  const getRandomQuestion = () =>
-    MOCK_QUESTIONS[Math.floor(Math.random() * MOCK_QUESTIONS.length)];
 
-  const startBattle = (attackerId: number, defenderId: number) => {
+  const handleTopicSelect = (category: QuestionCategory) => {
+    if (!pendingBattle) return;
+
     setBattleData({
-      attackerId,
-      defenderId,
+      attackerId: pendingBattle.attackerId,
+      defenderId: pendingBattle.defenderId,
       attackerTime: settings.timeLimit,
       defenderTime: settings.timeLimit,
-      currentTurnId: attackerId,
-      question: getRandomQuestion(),
+      currentTurnId: pendingBattle.attackerId,
+      category: category, // Запам'ятовуємо тему
+      question: getRandomQuestion(category), // Генеруємо питання цієї теми
       penaltyUntil: null,
     });
+
+    setPendingBattle(null);
     setPhase("BATTLE");
   };
 
@@ -270,13 +279,15 @@ export default function PoleGame() {
       setBattleData((prev) => ({
         ...prev!,
         currentTurnId: nextPlayer,
-        question: getRandomQuestion(),
+        // ЗМІНА: передаємо збережену категорію
+        question: getRandomQuestion(prev!.category),
       }));
     } else {
       setBattleData((prev) => ({
         ...prev!,
         penaltyUntil: Date.now() + 3000,
-        question: getRandomQuestion(),
+        // ЗМІНА: передаємо збережену категорію
+        question: getRandomQuestion(prev!.category),
       }));
     }
   };
@@ -351,7 +362,7 @@ export default function PoleGame() {
         />
       )}
 
-      {(phase === "MAP_SELECTION" || phase === "BATTLE") && (
+      {(phase === "MAP_SELECTION" || phase === "BATTLE" || phase === "TOPIC_SELECTION") && (
         <GameBoard
           grid={grid}
           players={players}
@@ -361,6 +372,15 @@ export default function PoleGame() {
           onCellClick={handleCellClick}
           onReset={resetGame}
           onToMenu={() => setPhase("MENU")}
+        />
+      )}
+
+      {phase === "TOPIC_SELECTION" && pendingBattle && (
+        <TopicSelection
+          attackerId={pendingBattle.attackerId}
+          defenderId={pendingBattle.defenderId}
+          players={players}
+          onSelect={handleTopicSelect}
         />
       )}
 
