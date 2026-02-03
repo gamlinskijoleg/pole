@@ -1,273 +1,427 @@
 /* app/game.module.css */
 
 .container {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	min-height: 100vh;
-	font-family: "Arial", sans-serif;
-	background-color: #f0f2f5;
-	padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-family: "Arial", sans-serif;
+  background-color: #f0f2f5;
+  padding: 20px;
 }
 
-/* Menu */
 .menu {
-	background: white;
-	padding: 2rem;
-	border-radius: 12px;
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-	width: 100%;
-	max-width: 500px; /* Трохи ширше для налаштувань */
-	max-height: 90vh; /* Щоб не вилазило за екран */
-	overflow-y: auto; /* Скрол для меню */
-	display: flex;
-	flex-direction: column;
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .formGroup {
-	margin-bottom: 1rem;
+  margin-bottom: 1rem;
 }
 
 .formGroup label {
-	display: block;
-	margin-bottom: 0.5rem;
-	font-weight: bold;
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: bold;
 }
 
 .input {
-	width: 100%;
-	padding: 8px;
-	border: 1px solid #ccc;
-	border-radius: 4px;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
 }
 
-/* Налаштування гравців */
 .playersList {
-	margin-bottom: 20px;
-	border: 1px solid #eee;
-	padding: 10px;
-	border-radius: 8px;
-	background: #fafafa;
-	max-height: 300px;
-	overflow-y: auto; /* Окремий скрол для списку гравців */
+  margin-bottom: 20px;
+  border: 1px solid #eee;
+  padding: 10px;
+  border-radius: 8px;
+  background: #fafafa;
+  max-height: 300px;
+  overflow-y: auto;
 }
 
 .playerRow {
-	display: flex;
-	gap: 10px;
-	margin-bottom: 10px;
-	align-items: center;
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  align-items: center;
 }
 
 .playerNameInput {
-	flex: 1;
-	padding: 8px;
-	border: 1px solid #ccc;
-	border-radius: 4px;
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
 }
 
 .playerColorInput {
-	width: 50px;
-	height: 40px;
-	padding: 0;
-	border: none;
-	background: none;
-	cursor: pointer;
+  width: 50px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
 }
 
 .button {
-	width: 100%;
-	padding: 12px;
-	background-color: #0070f3;
-	color: white;
-	border: none;
-	border-radius: 6px;
-	cursor: pointer;
-	font-size: 1.1rem;
-	font-weight: bold;
-	transition: background 0.2s;
-	margin-top: auto;
+  width: 100%;
+  padding: 12px;
+  background-color: #0070f3;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  font-weight: bold;
+  transition: background 0.2s;
+  margin-top: auto;
 }
 
 .button:hover {
-	background-color: #005bb5;
+  background-color: #005bb5;
 }
 
-/* Grid / Map */
 .gameBoard {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
 }
 
 .grid {
-	display: grid;
-	/* ЗМІНА: Прибираємо gap, щоб клітинки злилися */
-	gap: 0;
-	/* Можна змінити колір фону підкладки, він тепер буде менш помітний */
-	background-color: #ccc;
-	border: 4px solid #333; /* Зовнішня рамка всього поля */
+  display: grid;
+  gap: 0;
+  background-color: #ccc;
+  border: 4px solid #333;
 }
 
 .cell {
-	/* ... старі стилі залишаємо (width, height, display flex тощо) ... */
-	/* Зміни для вирівнювання тексту: */
-	display: flex;
-	align-items: center;
-	justify-content: center;
-
-	/* Важливо: щоб текст не розтягував клітинку */
-	overflow: hidden;
-	padding: 16px; /* Відступ, щоб текст не прилипав до країв */
-
-	/* Інші стилі (кольори, курсор) залишаються як були */
-	font-weight: bold;
-	cursor: pointer;
-	transition: opacity 0.2s;
-	color: white;
-	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-	user-select: none;
-
-	/* Можна додати мінімальну висоту, щоб сітка не "стрибала" */
-	aspect-ratio: 1;
-	border-radius: 0;
-	box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  user-select: none;
+  aspect-ratio: 1;
+  border-radius: 0;
+  box-sizing: border-box;
 }
+
 .cell:hover {
-	opacity: 0.8;
+  opacity: 0.8;
 }
 
 .cell.potentialTarget {
-	box-shadow: inset 0 0 0 4px white;
-	animation: pulse 1s infinite;
-	z-index: 1;
+  box-shadow: inset 0 0 0 4px white;
+  animation: pulse 1s infinite;
+  z-index: 1;
 }
 
 .cellText {
-	font-size: 0.75rem; /* Маленький шрифт (12px) */
-	line-height: 1.1; /* Щільні рядки */
-	text-align: center; /* Центрування */
-	word-break: break-word; /* Розривати довгі слова */
-	overflow-wrap: break-word; /* Переносити слова */
-	max-width: 100%;
-	max-height: 100%;
+  font-size: 0.75rem;
+  line-height: 1.1;
+  text-align: center;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 @keyframes pulse {
-	0% {
-		transform: scale(1);
-	}
-	50% {
-		transform: scale(0.95);
-	}
-	100% {
-		transform: scale(1);
-	}
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .infoPanel {
-	background: white;
-	padding: 15px;
-	border-radius: 8px;
-	margin-bottom: 10px;
-	text-align: center;
-	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* Battle Overlay */
 .battleOverlay {
-	position: fixed;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	background: rgba(0, 0, 0, 0.85);
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	z-index: 100;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
 }
 
 .battleCard {
-	background: white;
-	padding: 2rem;
-	border-radius: 12px;
-	width: 90%;
-	max-width: 600px;
-	text-align: center;
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  text-align: center;
 }
 
 .timers {
-	display: flex;
-	justify-content: space-between;
-	margin-bottom: 20px;
-	font-size: 1.5rem;
-	font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+  font-weight: bold;
 }
 
 .activeTimer {
-	color: #d32f2f;
-	transform: scale(1.1);
-	transition: transform 0.2s;
+  color: #d32f2f;
+  transform: scale(1.1);
+  transition: transform 0.2s;
 }
 
 .questionBox {
-	margin: 20px 0;
-	font-size: 1.2rem;
+  margin: 20px 0;
+  font-size: 1.2rem;
 }
 
 .answersGrid {
-	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
 
 .answerBtn {
-	padding: 15px;
-	background: #f0f0f0;
-	border: 1px solid #ddd;
-	border-radius: 8px;
-	cursor: pointer;
-	font-size: 1rem;
-	transition: background 0.2s;
+  padding: 15px;
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background 0.2s;
 }
 
 .answerBtn:hover {
-	background: #e0e0e0;
+  background: #e0e0e0;
 }
 
 .answerBtn:disabled {
-	opacity: 0.5;
-	cursor: not-allowed;
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .penaltyOverlay {
-	color: #d32f2f;
-	font-weight: bold;
-	margin-top: 15px;
-	font-size: 1.2rem;
-	animation: shake 0.5s;
+  color: #d32f2f;
+  font-weight: bold;
+  margin-top: 15px;
+  font-size: 1.2rem;
+  animation: shake 0.5s;
 }
 
 @keyframes shake {
-	0% {
-		transform: translateX(0);
-	}
-	25% {
-		transform: translateX(-5px);
-	}
-	75% {
-		transform: translateX(5px);
-	}
-	100% {
-		transform: translateX(0);
-	}
+  0% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+  100% {
+    transform: translateX(0);
+  }
 }
 
 @media (max-width: 600px) {
-	.cellText {
-		font-size: 0.6rem; /* Ще менше для телефонів */
-	}
+  .cellText {
+    font-size: 0.6rem;
+  }
+}
+
+/* app/game.module.css */
+
+/* ... (попередні стилі Grid/Cell залишаємо без змін) ... */
+
+/* --- НОВІ СТИЛІ ДЛЯ РЕДАКТОРА --- */
+
+.editorHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #eee;
+}
+
+.backButton {
+  background: transparent;
+  border: 1px solid #ccc;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  color: #555;
+}
+.backButton:hover {
+  background: #eee;
+}
+
+/* Стрічка тем (Горизонтальний скрол) */
+.topicsBar {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+  width: 100%;
+  scrollbar-width: thin;
+}
+
+.topicTab {
+  padding: 8px 16px;
+  background: #f0f2f5;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  cursor: pointer;
+  white-space: nowrap;
+  font-weight: bold;
+  color: #555;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topicTab:hover {
+  background: #e4e6eb;
+}
+
+.topicTab.active {
+  background: #0070f3;
+  color: white;
+  border-color: #0070f3;
+  box-shadow: 0 2px 5px rgba(0, 112, 243, 0.3);
+}
+
+.addTopicBtn {
+  background: #28a745;
+  color: white;
+  border: none;
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Картка форми питання */
+.editorCard {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border: 1px solid #eee;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+.answerRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 5px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.answerRow.correct {
+  background: #e6fffa;
+  border: 1px solid #38b2ac;
+}
+
+.radio {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #28a745;
+}
+
+/* Список карток питань */
+.questionList {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+}
+
+.qCard {
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: transform 0.1s;
+}
+.qCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.qActions {
+  display: flex;
+  gap: 5px;
+}
+
+.iconBtn {
+  border: none;
+  background: #f0f0f0;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.iconBtn.edit:hover {
+  background: #3498db;
+  color: white;
+}
+.iconBtn.delete:hover {
+  background: #e74c3c;
+  color: white;
+}
+
+/* Анімація для видалення */
+.qCard.editing {
+  border: 2px solid #f39c12;
+  background: #fffaf0;
 }

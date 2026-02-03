@@ -3,15 +3,29 @@
 
 import { useState, useEffect } from "react";
 import styles from "./game.module.css";
-import { Player, Cell, GameSettings, Question, MOCK_QUESTIONS, QuestionCategory } from "./types";
+import {
+  Player,
+  Cell,
+  GameSettings,
+  Question,
+  MOCK_QUESTIONS,
+  QuestionCategory,
+} from "./types";
 
+// Імпорт компонентів
 import MainMenu from "./components/MainMenu";
 import GameBoard from "./components/GameBoard";
 import BattleModal from "./components/BattleModal";
 import TopicSelection from "./components/TopicSelection";
-import QuestionsEditor from "./components/QuestionsEditor";
+import QuestionsEditor from "./components/QuestionsEditor"; // Перевір, щоб ім'я файлу збігалося!
 
-type GamePhase = 'MENU' | 'EDITOR' | 'MAP_SELECTION' | 'TOPIC_SELECTION' | 'BATTLE' | 'GAME_OVER';
+type GamePhase =
+  | "MENU"
+  | "EDITOR"
+  | "MAP_SELECTION"
+  | "TOPIC_SELECTION"
+  | "BATTLE"
+  | "GAME_OVER";
 
 interface PlayerConfig {
   name: string;
@@ -27,6 +41,7 @@ const getRandomColor = () => {
   return color;
 };
 
+// Версія збереження. Якщо зміниш цифру - старі дані зітруться (бо ключ інший)
 const STORAGE_KEY = "pole_game_save_v3";
 
 export default function PoleGame() {
@@ -45,13 +60,17 @@ export default function PoleGame() {
     { name: "Гравець 2", color: "#33FF57" },
   ]);
 
+  // Тут зберігаються всі створені вами питання
   const [customQuestions, setCustomQuestions] = useState<Question[]>([]);
 
   const [players, setPlayers] = useState<Player[]>([]);
   const [grid, setGrid] = useState<Cell[]>([]);
   const [currentPlayerId, setCurrentPlayerId] = useState<number | null>(null);
 
-  const [pendingBattle, setPendingBattle] = useState<{ attackerId: number, defenderId: number } | null>(null);
+  const [pendingBattle, setPendingBattle] = useState<{
+    attackerId: number;
+    defenderId: number;
+  } | null>(null);
 
   const [battleData, setBattleData] = useState<{
     attackerId: number;
@@ -64,10 +83,10 @@ export default function PoleGame() {
     category: QuestionCategory;
   } | null>(null);
 
+  // Об'єднуємо стандартні питання з вашими
   const allQuestions = [...MOCK_QUESTIONS, ...customQuestions];
 
-  // --- STORAGE & SYNC LOGIC ---
-
+  // --- 1. ЗАВАНТАЖЕННЯ (LOAD) ---
   useEffect(() => {
     const savedData = localStorage.getItem(STORAGE_KEY);
     if (savedData) {
@@ -81,23 +100,44 @@ export default function PoleGame() {
         setCurrentPlayerId(parsed.currentPlayerId);
         setBattleData(parsed.battleData);
         setPendingBattle(parsed.pendingBattle);
+        // Головне: завантажуємо ваші питання
+        if (parsed.customQuestions) setCustomQuestions(parsed.customQuestions);
       } catch (e) {
-        console.error(e);
+        console.error("Error loading save:", e);
       }
     }
     setIsLoaded(true);
   }, []);
 
+  // --- 2. ЗБЕРЕЖЕННЯ (SAVE) ---
   useEffect(() => {
     if (!isLoaded) return;
     const stateToSave = {
-      phase, settings, playerConfigs, players, grid, currentPlayerId, battleData, pendingBattle,
-      customQuestions // Зберігаємо власні питання
+      phase,
+      settings,
+      playerConfigs,
+      players,
+      grid,
+      currentPlayerId,
+      battleData,
+      pendingBattle,
+      customQuestions, // <-- Ось це гарантує, що нові питання полетять в LocalStorage
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
-  }, [phase, settings, playerConfigs, players, grid, currentPlayerId, battleData, pendingBattle, customQuestions, isLoaded]);
+  }, [
+    phase,
+    settings,
+    playerConfigs,
+    players,
+    grid,
+    currentPlayerId,
+    battleData,
+    pendingBattle,
+    customQuestions,
+    isLoaded,
+  ]);
 
-  // Синхронізація кількості конфігурацій гравців
+  // Сінхронізація кількості гравців з налаштуваннями
   useEffect(() => {
     if (!isLoaded) return;
     setPlayerConfigs((prev) => {
@@ -128,13 +168,50 @@ export default function PoleGame() {
   };
 
   const resetGame = () => {
-    if (confirm("Всі дані буде видалено. Продовжити?")) {
-      localStorage.removeItem(STORAGE_KEY);
-      window.location.reload();
+    if (
+      confirm(
+        "Ви впевнені? Весь прогрес і налаштування поточної партії будуть скинуті. (Питання залишаться, якщо вони збережені)",
+      )
+    ) {
+      // Ми не хочемо видаляти питання при скиданні гри, тому очищаємо вибірково
+      // Або якщо хочеш повний вайп - localStorage.removeItem(STORAGE_KEY);
+      // Давай зробимо "М'яке скидання" (нова гра, але питання лишаються)
+
+      // Щоб скинути все повністю (включно з питаннями) розкоментуй це:
+      // localStorage.removeItem(STORAGE_KEY); window.location.reload(); return;
+
+      setPhase("MENU");
+      setGrid([]);
+      setPlayers([]);
+      setCurrentPlayerId(null);
+      setBattleData(null);
+      setPendingBattle(null);
+      // customQuestions не чіпаємо, щоб не стерти працю користувача
     }
   };
 
-  // --- GAME LOGIC HELPER ---
+  // --- ЛОГІКА РЕДАКТОРА ---
+
+  // Ця функція обробляє і додавання нових, і редагування старих
+  const handleSaveQuestion = (q: Question) => {
+    setCustomQuestions((prev) => {
+      const exists = prev.find((item) => item.id === q.id);
+      if (exists) {
+        // Оновлюємо існуюче
+        return prev.map((item) => (item.id === q.id ? q : item));
+      } else {
+        // Додаємо нове
+        return [...prev, q];
+      }
+    });
+  };
+
+  const handleDeleteQuestion = (id: number) => {
+    setCustomQuestions((prev) => prev.filter((q) => q.id !== id));
+  };
+
+  // --- ЛОГІКА ГРИ ---
+
   const isNeighborToPlayer = (targetCell: Cell, playerId: number) => {
     const playerCells = grid.filter((c) => c.ownerId === playerId);
     return playerCells.some(
@@ -143,7 +220,6 @@ export default function PoleGame() {
     );
   };
 
-  // --- START GAME LOGIC ---
   const startGame = () => {
     const totalCells = settings.gridSize * settings.gridSize;
     if (settings.playerCount > totalCells) {
@@ -151,7 +227,7 @@ export default function PoleGame() {
       return;
     }
 
-    // 1. Створення пустої сітки
+    // 1. Сітка
     let newGrid: Cell[] = [];
     for (let y = 0; y < settings.gridSize; y++) {
       for (let x = 0; x < settings.gridSize; x++) {
@@ -167,13 +243,9 @@ export default function PoleGame() {
       cellsCount: 0,
     }));
 
-    // 2. Розставляння "зерен" (ПОКРАЩЕНО)
-    // Спершу пробуємо випадково, якщо не виходить - шукаємо першу вільну
+    // 2. Зерна
     let placedSeeds = 0;
-
-    // Перемішуємо індекси сітки, щоб випадковий вибір був без колізій
     let availableIndices = Array.from({ length: newGrid.length }, (_, i) => i);
-    // Функція shuffle
     availableIndices.sort(() => Math.random() - 0.5);
 
     while (placedSeeds < newPlayers.length && availableIndices.length > 0) {
@@ -184,7 +256,7 @@ export default function PoleGame() {
       }
     }
 
-    // 3. Region Growing (Заповнення порожнечі)
+    // 3. Region Growing
     let emptyCells = newGrid.filter((c) => c.ownerId === null).length;
     let safeguard = 0;
 
@@ -193,10 +265,12 @@ export default function PoleGame() {
       for (let pid = 0; pid < newPlayers.length; pid++) {
         const playerCells = newGrid.filter((c) => c.ownerId === pid);
         const neighbors: number[] = [];
-
         playerCells.forEach((cell) => {
           [
-            { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 },
+            { x: 1, y: 0 },
+            { x: -1, y: 0 },
+            { x: 0, y: 1 },
+            { x: 0, y: -1 },
           ].forEach((offset) => {
             const idx = newGrid.findIndex(
               (c) => c.x === cell.x + offset.x && c.y === cell.y + offset.y,
@@ -207,7 +281,6 @@ export default function PoleGame() {
         });
 
         if (neighbors.length > 0) {
-          // Захоплюємо випадкового вільного сусіда
           newGrid[
             neighbors[Math.floor(Math.random() * neighbors.length)]
           ].ownerId = pid;
@@ -215,12 +288,13 @@ export default function PoleGame() {
           if (emptyCells === 0) break;
         }
       }
-
-      // Fallback: якщо ніхто не має сусідів, але є пусті клітинки (ізольовані)
-      if (emptyCells > 0 && emptyCells === newGrid.filter((c) => c.ownerId === null).length) {
+      // Fallback
+      if (
+        emptyCells > 0 &&
+        emptyCells === newGrid.filter((c) => c.ownerId === null).length
+      ) {
         const remainingIdx = newGrid.findIndex((c) => c.ownerId === null);
         if (remainingIdx !== -1) {
-          // Віддаємо першому живому
           newGrid[remainingIdx].ownerId = 0;
           emptyCells--;
         }
@@ -233,23 +307,12 @@ export default function PoleGame() {
     setPlayers(newPlayers);
     setGrid(newGrid);
     setCurrentPlayerId(Math.floor(Math.random() * newPlayers.length));
-
-    // Очищаємо будь-які старі стани битви
     setPendingBattle(null);
     setBattleData(null);
-
     setPhase("MAP_SELECTION");
   };
 
-  // --- HANDLERS FOR EDITOR ---
-  const handleSaveQuestion = (q: Question) => {
-    setCustomQuestions(prev => [...prev, q]);
-  };
-  const handleDeleteQuestion = (id: number) => {
-    setCustomQuestions(prev => prev.filter(q => q.id !== id));
-  };
-
-  // --- ACTION HANDLERS ---
+  // --- ACTIONS ---
 
   const handleCellClick = (cell: Cell) => {
     if (phase !== "MAP_SELECTION" || currentPlayerId === null) return;
@@ -274,8 +337,6 @@ export default function PoleGame() {
 
   const handleTopicSelect = (category: QuestionCategory) => {
     if (!pendingBattle) return;
-
-    // ВАЖЛИВО: Тут ми явно беремо settings.timeLimit, щоб гарантувати актуальність
     setBattleData({
       attackerId: pendingBattle.attackerId,
       defenderId: pendingBattle.defenderId,
@@ -286,7 +347,6 @@ export default function PoleGame() {
       question: getRandomQuestion(category),
       penaltyUntil: null,
     });
-
     setPendingBattle(null);
     setPhase("BATTLE");
   };
@@ -332,7 +392,6 @@ export default function PoleGame() {
       });
       setGrid(newGrid);
       setPlayers(newPlayers);
-
       const alive = newPlayers.filter((p) => p.isAlive);
       if (alive.length === 1) return "GAME_OVER";
       else {
@@ -343,7 +402,7 @@ export default function PoleGame() {
     setBattleData(null);
   };
 
-  // Timer Effect
+  // Timer
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (phase === "BATTLE" && battleData) {
@@ -376,16 +435,18 @@ export default function PoleGame() {
       {phase === "MENU" && (
         <>
           <MainMenu
-            settings={settings} setSettings={setSettings}
-            playerConfigs={playerConfigs} updatePlayerConfig={updatePlayerConfig}
-            onStart={startGame} onReset={resetGame}
+            settings={settings}
+            setSettings={setSettings}
+            playerConfigs={playerConfigs}
+            updatePlayerConfig={updatePlayerConfig}
+            onStart={startGame}
+            onReset={resetGame}
           />
-          {/* Кнопка редактора питань */}
-          <div style={{ marginTop: '10px' }}>
+          <div style={{ marginTop: "10px" }}>
             <button
               className={styles.button}
-              style={{ background: '#6f42c1' }}
-              onClick={() => setPhase('EDITOR')}
+              style={{ background: "#6f42c1" }}
+              onClick={() => setPhase("EDITOR")}
             >
               📝 Редактор питань та тем
             </button>
@@ -393,7 +454,7 @@ export default function PoleGame() {
         </>
       )}
 
-      {/* Фаза редактора */}
+      {/* ФАЗА РЕДАКТОРА */}
       {phase === "EDITOR" && (
         <QuestionsEditor
           customQuestions={customQuestions}
@@ -403,7 +464,9 @@ export default function PoleGame() {
         />
       )}
 
-      {(phase === "MAP_SELECTION" || phase === "BATTLE" || phase === "TOPIC_SELECTION") && (
+      {(phase === "MAP_SELECTION" ||
+        phase === "BATTLE" ||
+        phase === "TOPIC_SELECTION") && (
         <GameBoard
           grid={grid}
           players={players}
