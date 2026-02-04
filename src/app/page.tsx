@@ -3,29 +3,16 @@
 
 import { useState, useEffect } from "react";
 import styles from "./game.module.css";
-import {
-  Player,
-  Cell,
-  GameSettings,
-  Question,
-  MOCK_QUESTIONS,
-  QuestionCategory,
-} from "./types";
+import { Player, Cell, GameSettings, Question, MOCK_QUESTIONS, QuestionCategory, BattleRecord } from "./types";
 
-// Імпорт компонентів
 import MainMenu from "./components/MainMenu";
 import GameBoard from "./components/GameBoard";
 import BattleModal from "./components/BattleModal";
 import TopicSelection from "./components/TopicSelection";
-import QuestionsEditor from "./components/QuestionsEditor"; // Перевір, щоб ім'я файлу збігалося!
+import QuestionsEditor from "./components/QuestionsEditor";
+import GameSidebar from "./components/GameSidebar";
 
-type GamePhase =
-  | "MENU"
-  | "EDITOR"
-  | "MAP_SELECTION"
-  | "TOPIC_SELECTION"
-  | "BATTLE"
-  | "GAME_OVER";
+type GamePhase = 'MENU' | 'EDITOR' | 'MAP_SELECTION' | 'TOPIC_SELECTION' | 'BATTLE' | 'GAME_OVER';
 
 interface PlayerConfig {
   name: string;
@@ -41,8 +28,7 @@ const getRandomColor = () => {
   return color;
 };
 
-// Версія збереження. Якщо зміниш цифру - старі дані зітруться (бо ключ інший)
-const STORAGE_KEY = "pole_game_save_v3";
+const STORAGE_KEY = "pole_game_save_v5_stats";
 
 export default function PoleGame() {
   // --- STATE ---
@@ -60,17 +46,15 @@ export default function PoleGame() {
     { name: "Гравець 2", color: "#33FF57" },
   ]);
 
-  // Тут зберігаються всі створені вами питання
-  const [customQuestions, setCustomQuestions] = useState<Question[]>([]);
-
+  const [questions, setQuestions] = useState<Question[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
   const [grid, setGrid] = useState<Cell[]>([]);
   const [currentPlayerId, setCurrentPlayerId] = useState<number | null>(null);
 
-  const [pendingBattle, setPendingBattle] = useState<{
-    attackerId: number;
-    defenderId: number;
-  } | null>(null);
+  const [battleLog, setBattleLog] = useState<BattleRecord[]>([]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const [pendingBattle, setPendingBattle] = useState<{ attackerId: number, defenderId: number } | null>(null);
 
   const [battleData, setBattleData] = useState<{
     attackerId: number;
@@ -81,12 +65,11 @@ export default function PoleGame() {
     question: Question | null;
     penaltyUntil: number | null;
     category: QuestionCategory;
+    attackerScore: number;
+    defenderScore: number;
   } | null>(null);
 
-  // Об'єднуємо стандартні питання з вашими
-  const allQuestions = [...MOCK_QUESTIONS, ...customQuestions];
-
-  // --- 1. ЗАВАНТАЖЕННЯ (LOAD) ---
+  // --- 1. ЗАВАНТАЖЕННЯ ---
   useEffect(() => {
     const savedData = localStorage.getItem(STORAGE_KEY);
     if (savedData) {
@@ -100,44 +83,34 @@ export default function PoleGame() {
         setCurrentPlayerId(parsed.currentPlayerId);
         setBattleData(parsed.battleData);
         setPendingBattle(parsed.pendingBattle);
-        // Головне: завантажуємо ваші питання
-        if (parsed.customQuestions) setCustomQuestions(parsed.customQuestions);
+        setBattleLog(parsed.battleLog || []);
+
+        if (parsed.questions && parsed.questions.length > 0) {
+          setQuestions(parsed.questions);
+        } else {
+          setQuestions(MOCK_QUESTIONS);
+        }
       } catch (e) {
         console.error("Error loading save:", e);
+        setQuestions(MOCK_QUESTIONS);
       }
+    } else {
+      setQuestions(MOCK_QUESTIONS);
     }
     setIsLoaded(true);
   }, []);
 
-  // --- 2. ЗБЕРЕЖЕННЯ (SAVE) ---
+  // --- 2. ЗБЕРЕЖЕННЯ ---
   useEffect(() => {
     if (!isLoaded) return;
     const stateToSave = {
-      phase,
-      settings,
-      playerConfigs,
-      players,
-      grid,
-      currentPlayerId,
-      battleData,
-      pendingBattle,
-      customQuestions, // <-- Ось це гарантує, що нові питання полетять в LocalStorage
+      phase, settings, playerConfigs, players, grid, currentPlayerId, battleData, pendingBattle, questions,
+      battleLog
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
-  }, [
-    phase,
-    settings,
-    playerConfigs,
-    players,
-    grid,
-    currentPlayerId,
-    battleData,
-    pendingBattle,
-    customQuestions,
-    isLoaded,
-  ]);
+  }, [phase, settings, playerConfigs, players, grid, currentPlayerId, battleData, pendingBattle, questions, battleLog, isLoaded]);
 
-  // Сінхронізація кількості гравців з налаштуваннями
+  // Сінхронізація гравців
   useEffect(() => {
     if (!isLoaded) return;
     setPlayerConfigs((prev) => {
@@ -145,10 +118,7 @@ export default function PoleGame() {
       const newConfigs = [...prev];
       if (settings.playerCount > prev.length) {
         for (let i = prev.length; i < settings.playerCount; i++) {
-          newConfigs.push({
-            name: `Гравець ${i + 1}`,
-            color: getRandomColor(),
-          });
+          newConfigs.push({ name: `Гравець ${i + 1}`, color: getRandomColor() });
         }
       } else if (settings.playerCount < prev.length) {
         return newConfigs.slice(0, settings.playerCount);
@@ -157,66 +127,46 @@ export default function PoleGame() {
     });
   }, [settings.playerCount, isLoaded]);
 
-  const updatePlayerConfig = (
-    index: number,
-    field: keyof PlayerConfig,
-    value: string,
-  ) => {
+  const updatePlayerConfig = (index: number, field: keyof PlayerConfig, value: string) => {
     const newConfigs = [...playerConfigs];
     newConfigs[index] = { ...newConfigs[index], [field]: value };
     setPlayerConfigs(newConfigs);
   };
 
   const resetGame = () => {
-    if (
-      confirm(
-        "Ви впевнені? Весь прогрес і налаштування поточної партії будуть скинуті. (Питання залишаться, якщо вони збережені)",
-      )
-    ) {
-      // Ми не хочемо видаляти питання при скиданні гри, тому очищаємо вибірково
-      // Або якщо хочеш повний вайп - localStorage.removeItem(STORAGE_KEY);
-      // Давай зробимо "М'яке скидання" (нова гра, але питання лишаються)
-
-      // Щоб скинути все повністю (включно з питаннями) розкоментуй це:
-      // localStorage.removeItem(STORAGE_KEY); window.location.reload(); return;
-
+    if (confirm("Скинути прогрес партії?")) {
       setPhase("MENU");
       setGrid([]);
       setPlayers([]);
       setCurrentPlayerId(null);
       setBattleData(null);
       setPendingBattle(null);
-      // customQuestions не чіпаємо, щоб не стерти працю користувача
+      setBattleLog([]);
     }
   };
 
-  // --- ЛОГІКА РЕДАКТОРА ---
+  const factoryReset = () => {
+    if (confirm("УВАГА! Це видалить ВСІ ваші питання і відновить стандартні. Ви впевнені?")) {
+      localStorage.removeItem(STORAGE_KEY);
+      window.location.reload();
+    }
+  };
 
-  // Ця функція обробляє і додавання нових, і редагування старих
   const handleSaveQuestion = (q: Question) => {
-    setCustomQuestions((prev) => {
-      const exists = prev.find((item) => item.id === q.id);
-      if (exists) {
-        // Оновлюємо існуюче
-        return prev.map((item) => (item.id === q.id ? q : item));
-      } else {
-        // Додаємо нове
-        return [...prev, q];
-      }
+    setQuestions(prev => {
+      const exists = prev.find(item => item.id === q.id);
+      return exists ? prev.map(item => item.id === q.id ? q : item) : [...prev, q];
     });
   };
 
   const handleDeleteQuestion = (id: number) => {
-    setCustomQuestions((prev) => prev.filter((q) => q.id !== id));
+    setQuestions(prev => prev.filter(q => q.id !== id));
   };
-
-  // --- ЛОГІКА ГРИ ---
 
   const isNeighborToPlayer = (targetCell: Cell, playerId: number) => {
     const playerCells = grid.filter((c) => c.ownerId === playerId);
     return playerCells.some(
-      (pc) =>
-        Math.abs(pc.x - targetCell.x) + Math.abs(pc.y - targetCell.y) === 1,
+      (pc) => Math.abs(pc.x - targetCell.x) + Math.abs(pc.y - targetCell.y) === 1,
     );
   };
 
@@ -227,7 +177,6 @@ export default function PoleGame() {
       return;
     }
 
-    // 1. Сітка
     let newGrid: Cell[] = [];
     for (let y = 0; y < settings.gridSize; y++) {
       for (let x = 0; x < settings.gridSize; x++) {
@@ -236,14 +185,9 @@ export default function PoleGame() {
     }
 
     const newPlayers: Player[] = playerConfigs.map((cfg, i) => ({
-      id: i,
-      name: cfg.name,
-      color: cfg.color,
-      isAlive: true,
-      cellsCount: 0,
+      id: i, name: cfg.name, color: cfg.color, isAlive: true, cellsCount: 0,
     }));
 
-    // 2. Зерна
     let placedSeeds = 0;
     let availableIndices = Array.from({ length: newGrid.length }, (_, i) => i);
     availableIndices.sort(() => Math.random() - 0.5);
@@ -256,7 +200,6 @@ export default function PoleGame() {
       }
     }
 
-    // 3. Region Growing
     let emptyCells = newGrid.filter((c) => c.ownerId === null).length;
     let safeguard = 0;
 
@@ -266,68 +209,45 @@ export default function PoleGame() {
         const playerCells = newGrid.filter((c) => c.ownerId === pid);
         const neighbors: number[] = [];
         playerCells.forEach((cell) => {
-          [
-            { x: 1, y: 0 },
-            { x: -1, y: 0 },
-            { x: 0, y: 1 },
-            { x: 0, y: -1 },
-          ].forEach((offset) => {
-            const idx = newGrid.findIndex(
-              (c) => c.x === cell.x + offset.x && c.y === cell.y + offset.y,
-            );
-            if (idx !== -1 && newGrid[idx].ownerId === null)
-              neighbors.push(idx);
+          [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }].forEach((offset) => {
+            const idx = newGrid.findIndex((c) => c.x === cell.x + offset.x && c.y === cell.y + offset.y);
+            if (idx !== -1 && newGrid[idx].ownerId === null) neighbors.push(idx);
           });
         });
 
         if (neighbors.length > 0) {
-          newGrid[
-            neighbors[Math.floor(Math.random() * neighbors.length)]
-          ].ownerId = pid;
+          newGrid[neighbors[Math.floor(Math.random() * neighbors.length)]].ownerId = pid;
           emptyCells--;
           if (emptyCells === 0) break;
         }
       }
-      // Fallback
-      if (
-        emptyCells > 0 &&
-        emptyCells === newGrid.filter((c) => c.ownerId === null).length
-      ) {
+      if (emptyCells > 0 && emptyCells === newGrid.filter((c) => c.ownerId === null).length) {
         const remainingIdx = newGrid.findIndex((c) => c.ownerId === null);
-        if (remainingIdx !== -1) {
-          newGrid[remainingIdx].ownerId = 0;
-          emptyCells--;
-        }
+        if (remainingIdx !== -1) { newGrid[remainingIdx].ownerId = 0; emptyCells--; }
       }
     }
 
-    newPlayers.forEach((p) => {
-      p.cellsCount = newGrid.filter((c) => c.ownerId === p.id).length;
-    });
+    newPlayers.forEach((p) => { p.cellsCount = newGrid.filter((c) => c.ownerId === p.id).length; });
     setPlayers(newPlayers);
     setGrid(newGrid);
     setCurrentPlayerId(Math.floor(Math.random() * newPlayers.length));
     setPendingBattle(null);
     setBattleData(null);
+    setBattleLog([]);
     setPhase("MAP_SELECTION");
   };
-
-  // --- ACTIONS ---
 
   const handleCellClick = (cell: Cell) => {
     if (phase !== "MAP_SELECTION" || currentPlayerId === null) return;
     if (cell.ownerId === currentPlayerId) return;
     if (cell.ownerId !== null && isNeighborToPlayer(cell, currentPlayerId)) {
-      setPendingBattle({
-        attackerId: currentPlayerId,
-        defenderId: cell.ownerId,
-      });
+      setPendingBattle({ attackerId: currentPlayerId, defenderId: cell.ownerId });
       setPhase("TOPIC_SELECTION");
     }
   };
 
   const getRandomQuestion = (category?: QuestionCategory) => {
-    let source = allQuestions;
+    let source = questions;
     if (category) {
       const filtered = source.filter((q) => q.category === category);
       if (filtered.length > 0) source = filtered;
@@ -346,6 +266,8 @@ export default function PoleGame() {
       category: category,
       question: getRandomQuestion(category),
       penaltyUntil: null,
+      attackerScore: 0,
+      defenderScore: 0
     });
     setPendingBattle(null);
     setPhase("BATTLE");
@@ -356,70 +278,72 @@ export default function PoleGame() {
     if (battleData.penaltyUntil && Date.now() < battleData.penaltyUntil) return;
 
     if (idx === battleData.question.correctIndex) {
-      const nextPlayer =
-        battleData.currentTurnId === battleData.attackerId
-          ? battleData.defenderId
-          : battleData.attackerId;
+      const isAttackerTurn = battleData.currentTurnId === battleData.attackerId;
+      const nextPlayer = isAttackerTurn ? battleData.defenderId : battleData.attackerId;
+
       setBattleData((prev) => ({
         ...prev!,
         currentTurnId: nextPlayer,
         question: getRandomQuestion(prev!.category),
+        attackerScore: isAttackerTurn ? prev!.attackerScore + 1 : prev!.attackerScore,
+        defenderScore: !isAttackerTurn ? prev!.defenderScore + 1 : prev!.defenderScore,
       }));
     } else {
-      setBattleData((prev) => ({
-        ...prev!,
-        penaltyUntil: Date.now() + 3000,
-        question: getRandomQuestion(prev!.category),
-      }));
+      setBattleData((prev) => ({ ...prev!, penaltyUntil: Date.now() + 3000, question: getRandomQuestion(prev!.category) }));
     }
   };
 
   const endBattle = (winnerId: number, loserId: number) => {
+    if (battleData) {
+      const attacker = players.find(p => p.id === battleData.attackerId);
+      const defender = players.find(p => p.id === battleData.defenderId);
+      const winner = players.find(p => p.id === winnerId);
+
+      const duration = (settings.timeLimit * 2) - (battleData.attackerTime + battleData.defenderTime);
+
+      const record: BattleRecord = {
+        // FIX: Додаємо random, щоб уникнути дублікатів ключів
+        id: Date.now() + Math.random(),
+        attackerName: attacker?.name || '?',
+        defenderName: defender?.name || '?',
+        winnerName: winner?.name || '?',
+        category: battleData.category,
+        attackerScore: battleData.attackerScore,
+        defenderScore: battleData.defenderScore,
+        duration: duration
+      };
+      setBattleLog(prev => [...prev, record]);
+    }
+
     setPhase((currentPhase) => {
       if (currentPhase !== "BATTLE") return currentPhase;
-      const newGrid = grid.map((cell) => ({
-        ...cell,
-        ownerId: cell.ownerId === loserId ? winnerId : cell.ownerId,
-      }));
+      const newGrid = grid.map((cell) => ({ ...cell, ownerId: cell.ownerId === loserId ? winnerId : cell.ownerId }));
       const newPlayers = players.map((p) => {
         if (p.id === loserId) return { ...p, isAlive: false, cellsCount: 0 };
-        if (p.id === winnerId)
-          return {
-            ...p,
-            cellsCount: newGrid.filter((c) => c.ownerId === winnerId).length,
-          };
+        if (p.id === winnerId) return { ...p, cellsCount: newGrid.filter((c) => c.ownerId === winnerId).length };
         return p;
       });
       setGrid(newGrid);
       setPlayers(newPlayers);
       const alive = newPlayers.filter((p) => p.isAlive);
       if (alive.length === 1) return "GAME_OVER";
-      else {
-        setCurrentPlayerId(winnerId);
-        return "MAP_SELECTION";
-      }
+      else { setCurrentPlayerId(winnerId); return "MAP_SELECTION"; }
     });
     setBattleData(null);
   };
 
-  // Timer
+  // --- ВИПРАВЛЕНИЙ ТАЙМЕР ---
+  // 1. Ефект тільки для відліку часу
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (phase === "BATTLE" && battleData) {
       interval = setInterval(() => {
         setBattleData((prev) => {
           if (!prev) return null;
+          // Тут ми ТІЛЬКИ змінюємо час. Ми НЕ викликаємо endBattle тут.
           if (prev.currentTurnId === prev.attackerId) {
-            if (prev.attackerTime <= 0) {
-              endBattle(prev.defenderId, prev.attackerId);
-              return prev;
-            }
             return { ...prev, attackerTime: prev.attackerTime - 1 };
           } else {
-            if (prev.defenderTime <= 0) {
-              endBattle(prev.attackerId, prev.defenderId);
-              return prev;
-            }
             return { ...prev, defenderTime: prev.defenderTime - 1 };
           }
         });
@@ -428,100 +352,102 @@ export default function PoleGame() {
     return () => clearInterval(interval);
   }, [phase, battleData?.currentTurnId]);
 
+  // 2. Ефект для перевірки кінця гри (спрацьовує коли змінюється battleData)
+  useEffect(() => {
+    if (phase === "BATTLE" && battleData) {
+      if (battleData.currentTurnId === battleData.attackerId && battleData.attackerTime <= 0) {
+        endBattle(battleData.defenderId, battleData.attackerId);
+      } else if (battleData.currentTurnId === battleData.defenderId && battleData.defenderTime <= 0) {
+        endBattle(battleData.attackerId, battleData.defenderId);
+      }
+    }
+  }, [battleData]);
+
   if (!isLoaded) return <div className={styles.container}>Завантаження...</div>;
 
   return (
     <div className={styles.container}>
+
+      {phase !== "MENU" && (
+        <button
+          className={styles.menuToggleBtn}
+          onClick={() => setIsSidebarOpen(true)}
+          title="Історія та статистика"
+        >
+          📜
+        </button>
+      )}
+
+      <GameSidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        battleLog={battleLog}
+        players={players}
+        isGameOver={phase === "GAME_OVER"}
+      />
+
       {phase === "MENU" && (
         <>
           <MainMenu
-            settings={settings}
-            setSettings={setSettings}
-            playerConfigs={playerConfigs}
-            updatePlayerConfig={updatePlayerConfig}
-            onStart={startGame}
-            onReset={resetGame}
+            settings={settings} setSettings={setSettings}
+            playerConfigs={playerConfigs} updatePlayerConfig={updatePlayerConfig}
+            onStart={startGame} onReset={resetGame}
           />
-          <div style={{ marginTop: "10px" }}>
+          <div style={{ marginTop: '10px', display: 'flex', gap: '10px', flexDirection: 'column' }}>
             <button
               className={styles.button}
-              style={{ background: "#6f42c1" }}
-              onClick={() => setPhase("EDITOR")}
+              style={{ background: '#6f42c1' }}
+              onClick={() => setPhase('EDITOR')}
             >
               📝 Редактор питань та тем
+            </button>
+            <button
+              className={styles.button}
+              style={{ background: '#555', fontSize: '0.8rem', padding: '8px' }}
+              onClick={factoryReset}
+            >
+              ⚠️ Відновити стандартні питання
             </button>
           </div>
         </>
       )}
 
-      {/* ФАЗА РЕДАКТОРА */}
       {phase === "EDITOR" && (
         <QuestionsEditor
-          customQuestions={customQuestions}
+          customQuestions={questions}
           onSave={handleSaveQuestion}
           onDelete={handleDeleteQuestion}
           onBack={() => setPhase("MENU")}
         />
       )}
 
-      {(phase === "MAP_SELECTION" ||
-        phase === "BATTLE" ||
-        phase === "TOPIC_SELECTION") && (
+      {(phase === "MAP_SELECTION" || phase === "BATTLE" || phase === "TOPIC_SELECTION") && (
         <GameBoard
-          grid={grid}
-          players={players}
-          currentPlayerId={currentPlayerId}
-          phase={phase}
-          gridSize={settings.gridSize}
-          onCellClick={handleCellClick}
-          onReset={resetGame}
-          onToMenu={() => setPhase("MENU")}
+          grid={grid} players={players} currentPlayerId={currentPlayerId} phase={phase} gridSize={settings.gridSize}
+          onCellClick={handleCellClick} onReset={resetGame} onToMenu={() => setPhase("MENU")}
         />
       )}
 
       {phase === "TOPIC_SELECTION" && pendingBattle && (
         <TopicSelection
-          attackerId={pendingBattle.attackerId}
-          defenderId={pendingBattle.defenderId}
-          players={players}
-          onSelect={handleTopicSelect}
-          allQuestions={allQuestions}
+          attackerId={pendingBattle.attackerId} defenderId={pendingBattle.defenderId}
+          players={players} onSelect={handleTopicSelect} allQuestions={questions}
         />
       )}
 
       {phase === "BATTLE" && battleData && (
-        <BattleModal
-          battleData={battleData}
-          players={players}
-          onAnswer={handleAnswer}
-        />
+        <BattleModal battleData={battleData} players={players} onAnswer={handleAnswer} />
       )}
 
       {phase === "GAME_OVER" && (
         <div className={styles.menu}>
           <h1 style={{ textAlign: "center" }}>🏆 Перемога! 🏆</h1>
-          <h2
-            style={{
-              color: players.find((p) => p.isAlive)?.color,
-              textAlign: "center",
-              fontSize: "2rem",
-            }}
-          >
+          <h2 style={{ color: players.find((p) => p.isAlive)?.color, textAlign: "center", fontSize: "2rem" }}>
             {players.find((p) => p.isAlive)?.name}
           </h2>
-          <div
-            style={{ display: "flex", gap: "10px", justifyContent: "center" }}
-          >
-            <button className={styles.button} onClick={() => setPhase("MENU")}>
-              В меню
-            </button>
-            <button
-              className={styles.button}
-              style={{ background: "#d32f2f" }}
-              onClick={resetGame}
-            >
-              Нова гра
-            </button>
+          <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+            <button className={styles.button} onClick={() => setPhase("MENU")}>В меню</button>
+            <button className={styles.button} onClick={() => setIsSidebarOpen(true)} style={{ background: '#f1c40f', color: '#000' }}>Статистика</button>
           </div>
         </div>
       )}
