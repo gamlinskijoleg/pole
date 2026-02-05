@@ -1,6 +1,6 @@
 // app/components/TopicSelection.tsx
 import styles from "../game.module.css";
-import { QuestionCategory, Player, Question } from "../types";
+import type { Player, Question, QuestionCategory } from "../types";
 
 interface TopicSelectionProps {
   attackerId: number;
@@ -43,6 +43,7 @@ export default function TopicSelection({
         >
           {categories.map((cat) => (
             <button
+              type="button"
               key={cat}
               className={styles.answerBtn}
               onClick={() => onSelect(cat)}

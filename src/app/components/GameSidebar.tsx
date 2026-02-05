@@ -1,6 +1,6 @@
 // app/components/GameSidebar.tsx
 import styles from "../game.module.css";
-import { BattleRecord, Player } from "../types";
+import type { BattleRecord, Player } from "../types";
 
 interface GameSidebarProps {
   isOpen: boolean;
@@ -69,6 +69,7 @@ export default function GameSidebar({
             {isGameOver ? "🏆 Статистика" : "📜 Хід гри"}
           </h2>
           <button
+            type="button"
             onClick={onClose}
             style={{
               background: "none",

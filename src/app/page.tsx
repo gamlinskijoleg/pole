@@ -1,18 +1,17 @@
 // app/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import styles from "./game.module.css";
 import {
-  Player,
-  Cell,
-  GameSettings,
-  Question,
+  type Player,
+  type Cell,
+  type GameSettings,
+  type Question,
+  type QuestionCategory,
+  type BattleRecord,
   MOCK_QUESTIONS,
-  QuestionCategory,
-  BattleRecord,
 } from "./types";
-
 import MainMenu from "./components/MainMenu";
 import GameBoard from "./components/GameBoard";
 import BattleModal from "./components/BattleModal";
@@ -228,7 +227,7 @@ export default function PoleGame() {
       return;
     }
 
-    let newGrid: Cell[] = [];
+    const newGrid: Cell[] = [];
     for (let y = 0; y < settings.gridSize; y++) {
       for (let x = 0; x < settings.gridSize; x++) {
         newGrid.push({ x, y, ownerId: null });
@@ -244,7 +243,10 @@ export default function PoleGame() {
     }));
 
     let placedSeeds = 0;
-    let availableIndices = Array.from({ length: newGrid.length }, (_, i) => i);
+    const availableIndices = Array.from(
+      { length: newGrid.length },
+      (_, i) => i,
+    );
     availableIndices.sort(() => Math.random() - 0.5);
 
     while (placedSeeds < newPlayers.length && availableIndices.length > 0) {
@@ -359,76 +361,85 @@ export default function PoleGame() {
         ? battleData.defenderId
         : battleData.attackerId;
 
-      setBattleData((prev) => ({
-        ...prev!,
-        currentTurnId: nextPlayer,
-        question: getRandomQuestion(prev!.category),
-        attackerScore: isAttackerTurn
-          ? prev!.attackerScore + 1
-          : prev!.attackerScore,
-        defenderScore: !isAttackerTurn
-          ? prev!.defenderScore + 1
-          : prev!.defenderScore,
-      }));
-    } else {
-      setBattleData((prev) => ({
-        ...prev!,
-        penaltyUntil: Date.now() + 3000,
-        question: getRandomQuestion(prev!.category),
-      }));
-    }
-  };
-
-  const endBattle = (winnerId: number, loserId: number) => {
-    if (battleData) {
-      const attacker = players.find((p) => p.id === battleData.attackerId);
-      const defender = players.find((p) => p.id === battleData.defenderId);
-      const winner = players.find((p) => p.id === winnerId);
-
-      const duration =
-        settings.timeLimit * 2 -
-        (battleData.attackerTime + battleData.defenderTime);
-
-      const record: BattleRecord = {
-        // FIX: Додаємо random, щоб уникнути дублікатів ключів
-        id: Date.now() + Math.random(),
-        attackerName: attacker?.name || "?",
-        defenderName: defender?.name || "?",
-        winnerName: winner?.name || "?",
-        category: battleData.category,
-        attackerScore: battleData.attackerScore,
-        defenderScore: battleData.defenderScore,
-        duration: duration,
-      };
-      setBattleLog((prev) => [...prev, record]);
-    }
-
-    setPhase((currentPhase) => {
-      if (currentPhase !== "BATTLE") return currentPhase;
-      const newGrid = grid.map((cell) => ({
-        ...cell,
-        ownerId: cell.ownerId === loserId ? winnerId : cell.ownerId,
-      }));
-      const newPlayers = players.map((p) => {
-        if (p.id === loserId) return { ...p, isAlive: false, cellsCount: 0 };
-        if (p.id === winnerId)
-          return {
-            ...p,
-            cellsCount: newGrid.filter((c) => c.ownerId === winnerId).length,
-          };
-        return p;
+      setBattleData((prev) => {
+        if (prev === null) return prev;
+        return {
+          ...prev,
+          currentTurnId: nextPlayer,
+          question: getRandomQuestion(prev.category),
+          attackerScore: isAttackerTurn
+            ? prev.attackerScore + 1
+            : prev.attackerScore,
+          defenderScore: !isAttackerTurn
+            ? prev.defenderScore + 1
+            : prev.defenderScore,
+        };
       });
-      setGrid(newGrid);
-      setPlayers(newPlayers);
-      const alive = newPlayers.filter((p) => p.isAlive);
-      if (alive.length === 1) return "GAME_OVER";
-      else {
-        setCurrentPlayerId(winnerId);
-        return "MAP_SELECTION";
-      }
-    });
-    setBattleData(null);
+    } else {
+      setBattleData((prev) => {
+        if (prev === null) return prev;
+        return {
+          ...prev,
+          penaltyUntil: Date.now() + 3000,
+          question: getRandomQuestion(prev.category),
+        };
+      });
+    }
   };
+
+  const endBattle = useCallback(
+    (winnerId: number, loserId: number) => {
+      if (battleData) {
+        const attacker = players.find((p) => p.id === battleData.attackerId);
+        const defender = players.find((p) => p.id === battleData.defenderId);
+        const winner = players.find((p) => p.id === winnerId);
+
+        const duration =
+          settings.timeLimit * 2 -
+          (battleData.attackerTime + battleData.defenderTime);
+
+        const record: BattleRecord = {
+          // FIX: Додаємо random, щоб уникнути дублікатів ключів
+          id: Date.now() + Math.random(),
+          attackerName: attacker?.name || "?",
+          defenderName: defender?.name || "?",
+          winnerName: winner?.name || "?",
+          category: battleData.category,
+          attackerScore: battleData.attackerScore,
+          defenderScore: battleData.defenderScore,
+          duration: duration,
+        };
+        setBattleLog((prev) => [...prev, record]);
+      }
+
+      setPhase((currentPhase) => {
+        if (currentPhase !== "BATTLE") return currentPhase;
+        const newGrid = grid.map((cell) => ({
+          ...cell,
+          ownerId: cell.ownerId === loserId ? winnerId : cell.ownerId,
+        }));
+        const newPlayers = players.map((p) => {
+          if (p.id === loserId) return { ...p, isAlive: false, cellsCount: 0 };
+          if (p.id === winnerId)
+            return {
+              ...p,
+              cellsCount: newGrid.filter((c) => c.ownerId === winnerId).length,
+            };
+          return p;
+        });
+        setGrid(newGrid);
+        setPlayers(newPlayers);
+        const alive = newPlayers.filter((p) => p.isAlive);
+        if (alive.length === 1) return "GAME_OVER";
+        else {
+          setCurrentPlayerId(winnerId);
+          return "MAP_SELECTION";
+        }
+      });
+      setBattleData(null);
+    },
+    [grid, players, battleData, settings.timeLimit],
+  );
 
   // --- ВИПРАВЛЕНИЙ ТАЙМЕР ---
   // 1. Ефект тільки для відліку часу
@@ -448,7 +459,7 @@ export default function PoleGame() {
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [phase, battleData?.currentTurnId]);
+  }, [phase, battleData]);
 
   // 2. Ефект для перевірки кінця гри (спрацьовує коли змінюється battleData)
   useEffect(() => {
@@ -465,7 +476,7 @@ export default function PoleGame() {
         endBattle(battleData.attackerId, battleData.defenderId);
       }
     }
-  }, [battleData]);
+  }, [battleData, endBattle, phase]);
 
   if (!isLoaded) return <div className={styles.container}>Завантаження...</div>;
 
@@ -473,6 +484,7 @@ export default function PoleGame() {
     <div className={styles.container}>
       {phase !== "MENU" && (
         <button
+          type="button"
           className={styles.menuToggleBtn}
           onClick={() => setIsSidebarOpen(true)}
           title="Історія та статистика"
@@ -508,6 +520,7 @@ export default function PoleGame() {
             }}
           >
             <button
+              type="button"
               className={styles.button}
               style={{ background: "#6f42c1" }}
               onClick={() => setPhase("EDITOR")}
@@ -515,6 +528,7 @@ export default function PoleGame() {
               📝 Редактор питань та тем
             </button>
             <button
+              type="button"
               className={styles.button}
               style={{ background: "#555", fontSize: "0.8rem", padding: "8px" }}
               onClick={factoryReset}
@@ -582,10 +596,15 @@ export default function PoleGame() {
           <div
             style={{ display: "flex", gap: "10px", justifyContent: "center" }}
           >
-            <button className={styles.button} onClick={() => setPhase("MENU")}>
+            <button
+              type="button"
+              className={styles.button}
+              onClick={() => setPhase("MENU")}
+            >
               В меню
             </button>
             <button
+              type="button"
               className={styles.button}
               onClick={() => setIsSidebarOpen(true)}
               style={{ background: "#f1c40f", color: "#000" }}

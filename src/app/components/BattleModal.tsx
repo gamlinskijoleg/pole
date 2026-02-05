@@ -1,6 +1,6 @@
 // app/components/BattleModal.tsx
 import styles from "../game.module.css";
-import { Player, Question } from "../types";
+import type { Player, Question } from "../types";
 import MathRender from "./MathRender";
 
 interface BattleData {
@@ -75,6 +75,7 @@ export default function BattleModal({
         <div className={styles.answersGrid}>
           {battleData.question?.answers.map((ans, idx) => (
             <button
+              type="button"
               key={idx}
               className={styles.answerBtn}
               onClick={() => onAnswer(idx)}

@@ -106,10 +106,11 @@ export default function MainMenu({
       </div>
 
       <div style={{ display: "flex", gap: "10px" }}>
-        <button className={styles.button} onClick={onStart}>
+        <button type="button" className={styles.button} onClick={onStart}>
           Почати гру
         </button>
         <button
+          type="button"
           className={styles.button}
           style={{ background: "#d32f2f" }}
           onClick={onReset}

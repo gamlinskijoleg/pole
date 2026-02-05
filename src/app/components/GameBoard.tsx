@@ -1,6 +1,6 @@
 // app/components/GameBoard.tsx
 import styles from "../game.module.css";
-import { Player, Cell } from "../types";
+import type { Cell, Player } from "../types";
 
 interface GameBoardProps {
   grid: Cell[];
@@ -55,6 +55,7 @@ export default function GameBoard({
         }}
       >
         <button
+          type="button"
           className={styles.button}
           style={{
             width: "auto",
@@ -67,6 +68,7 @@ export default function GameBoard({
           В меню
         </button>
         <button
+          type="button"
           className={styles.button}
           style={{
             width: "auto",

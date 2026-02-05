@@ -1,8 +1,8 @@
 // app/components/QuestionsEditor.tsx
-import { useState, useRef, useEffect } from "react";
 import styles from "../game.module.css";
-import { Question } from "../types";
+import type { Question } from "../types";
 import MathRender from "./MathRender";
+import { useState, useRef } from "react";
 
 interface QuestionsEditorProps {
   customQuestions: Question[];
@@ -99,7 +99,10 @@ export default function QuestionsEditor({
       )
     ) {
       // Видаляємо всі питання цієї теми
-      filteredQuestions.forEach((q) => onDelete(q.id));
+      filteredQuestions.forEach((q) => {
+        onDelete(q.id);
+      });
+
       // Перемикаємось на іншу тему або режим створення
       const remaining = existingCategories.filter((c) => c !== activeCategory);
       if (remaining.length > 0) {
@@ -118,7 +121,7 @@ export default function QuestionsEditor({
     >
       {/* --- HEADER --- */}
       <div className={styles.editorHeader}>
-        <button onClick={onBack} className={styles.backButton}>
+        <button type="button" onClick={onBack} className={styles.backButton}>
           ← Назад
         </button>
         <h2 style={{ margin: 0, fontSize: "1.2rem" }}>Редактор Вікторини</h2>
@@ -152,6 +155,7 @@ export default function QuestionsEditor({
         ))}
 
         <button
+          type="button"
           className={styles.addTopicBtn}
           onClick={() => {
             setIsAddingTopic(true);
@@ -189,6 +193,7 @@ export default function QuestionsEditor({
               onKeyDown={(e) => e.key === "Enter" && handleCreateTopic()}
             />
             <button
+              type="button"
               className={styles.button}
               style={{ width: "auto" }}
               onClick={handleCreateTopic}
@@ -214,6 +219,7 @@ export default function QuestionsEditor({
                 {editingId ? "✏️ Редагування" : "➕ Нове питання"}
               </h3>
               <button
+                type="button"
                 onClick={handleDeleteTopic}
                 style={{
                   background: "none",
@@ -296,6 +302,7 @@ export default function QuestionsEditor({
 
             <div style={{ display: "flex", gap: "10px" }}>
               <button
+                type="button"
                 className={styles.button}
                 onClick={handleSubmit}
                 style={{ background: editingId ? "#f39c12" : "#0070f3" }}
@@ -304,6 +311,7 @@ export default function QuestionsEditor({
               </button>
               {editingId && (
                 <button
+                  type="button"
                   className={styles.button}
                   onClick={resetForm}
                   style={{ background: "#95a5a6", width: "auto" }}
@@ -344,6 +352,7 @@ export default function QuestionsEditor({
                   </div>
                   <div className={styles.qActions}>
                     <button
+                      type="button"
                       className={`${styles.iconBtn} ${styles.edit}`}
                       onClick={() => startEdit(q)}
                       title="Редагувати"
@@ -351,6 +360,7 @@ export default function QuestionsEditor({
                       ✏️
                     </button>
                     <button
+                      type="button"
                       className={`${styles.iconBtn} ${styles.delete}`}
                       onClick={() => confirm("Видалити?") && onDelete(q.id)}
                       title="Видалити"
