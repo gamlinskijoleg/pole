@@ -1,6 +1,7 @@
 // app/components/BattleModal.tsx
 import styles from "../game.module.css";
 import { Player, Question } from "../types";
+import MathRender from "./MathRender";
 
 interface BattleData {
   attackerId: number;
@@ -66,7 +67,9 @@ export default function BattleModal({
           <p>
             <strong>Питання:</strong>
           </p>
-          <h3>{battleData.question?.text}</h3>
+          <h3>
+            <MathRender text={battleData.question?.text || ""} />
+          </h3>
         </div>
 
         <div className={styles.answersGrid}>

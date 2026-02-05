@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import styles from "../game.module.css";
 import { Question } from "../types";
+import MathRender from "./MathRender";
 
 interface QuestionsEditorProps {
   customQuestions: Question[];
@@ -234,6 +235,24 @@ export default function QuestionsEditor({
                 value={text}
                 onChange={(e) => setText(e.target.value)}
               />
+
+              {text.includes("$") && (
+                <div
+                  style={{
+                    marginTop: "5px",
+                    padding: "10px",
+                    background: "#f8f9fa",
+                    borderRadius: "6px",
+                    border: "1px solid #ddd",
+                  }}
+                >
+                  <small style={{ color: "#666" }}>Попередній перегляд:</small>
+                  <br />
+                  <strong>
+                    <MathRender text={text} />
+                  </strong>
+                </div>
+              )}
             </div>
 
             <div className={styles.formGroup}>
